@@ -119,7 +119,7 @@ public class Main {
 
         Map<File, Metadata> exifMap = getMetadata(jpegFiles);
         System.out.println("Done reading EXIF data                                        ");
-        if (exifMap.size() < jpegFiles.size()) {
+        if (exifMap.size() == jpegFiles.size()) {
             System.out.println("Could not get EXIF data for " + (jpegFiles.size() - exifMap.size()) + " files. These will not be renamed.");
         }
 
@@ -224,21 +224,21 @@ public class Main {
     public static File getRawFileByName(List<File> rawFiles, String jpegName) {
         String name = removeFileExtension(jpegName);
         for (File f : rawFiles) {
-            if (removeFileExtension(f.getName()).equals(name)) return f;
+            if (removeFileExtension(f.getName()).equalsIgnoreCase(name)) return f;
         }
         return null;
     }
 
     public static Map<File, Metadata> getMetadata(List<File> jpegFiles) {
         Map<File, Metadata> exifMap = new HashMap<>();
-        double completed = 0;
-        double total = jpegFiles.size();
+        long completed = 0;
+        long total = jpegFiles.size();
         for (File file : jpegFiles) {
             try {
                 exifMap.put(file, ImageMetadataReader.readMetadata(file));
             } catch (IOException | ImageProcessingException e) { } finally {
                 completed++;
-                printProgressBar(completed / total);
+                printProgressBar((double)completed / total);
             }
         }
         return exifMap;
