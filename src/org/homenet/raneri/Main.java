@@ -104,9 +104,6 @@ public class Main {
             boolean renameExtras = input.nextLine().equalsIgnoreCase("Y");
             if (!renameExtras) {
                 for (File jpeg : extraJPEGs) jpegFiles.remove(jpeg);
-                for (File raw : extraRAWs) rawFiles.remove(raw);
-            } else {
-                for (File raw : extraRAWs) rawFiles.remove(raw);
             }
         }
 
