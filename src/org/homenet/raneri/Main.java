@@ -95,7 +95,7 @@ public class Main {
 
         if (extraJPEGs.size() == 0 && extraRAWs.size() == 0) {
             System.out.println("All files are in perfect JPEG/RAW pairs.");
-        } else if (extraJPEGs.size() == 0) {
+        } else if (extraRAWs.size() > 0) {
             System.out.println("There are " + extraRAWs.size() + " extra RAWs which will not be renamed.");
             for (File raw : extraRAWs) rawFiles.remove(raw);
         } else {
