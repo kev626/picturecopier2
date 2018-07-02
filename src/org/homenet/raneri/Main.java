@@ -65,11 +65,11 @@ public class Main {
         System.out.println("Checking to make sure all pictures have matches...");
         List<File> extraJPEGs = new ArrayList<>();
         for (File jpegFile : jpegFiles) {
-            String jpeg = jpegFile.getName();
+            String jpeg = removeFileExtension(jpegFile.getName());
             boolean matchFound = false;
             for (File rawFile : rawFiles) {
-                String raw = rawFile.getName();
-                if (removeFileExtension(jpeg).equals(removeFileExtension(raw))) matchFound = true;
+                String raw = removeFileExtension(rawFile.getName());
+                if (jpeg.equals(raw)) matchFound = true;
             }
 
             if (!matchFound) {
@@ -80,11 +80,11 @@ public class Main {
 
         List<File> extraRAWs = new ArrayList<>();
         for (File rawFile : rawFiles) {
-            String raw = rawFile.getName();
+            String raw = removeFileExtension(rawFile.getName());
             boolean matchFound = false;
             for (File jpegFile : jpegFiles) {
-                String jpeg = jpegFile.getName();
-                if (removeFileExtension(raw).equals(removeFileExtension(jpeg))) matchFound = true;
+                String jpeg = removeFileExtension(jpegFile.getName());
+                if (raw.equals(jpeg)) matchFound = true;
             }
 
             if (!matchFound) {
