@@ -39,7 +39,7 @@ public class Main {
         List<File> allFiles = new ArrayList<>();
 
         List<File> jpegFiles;
-        jpegFiles = getFilesByExtensionType(jpegdir, ".jpg");
+        jpegFiles = getFilesByExtensionType(jpegdir, ".JPG");
         allFiles.addAll(jpegFiles);
         if (jpegFiles.size() > 0) {
             System.out.println("Found " + jpegFiles.size() + " JPEG images");
@@ -69,7 +69,7 @@ public class Main {
             boolean matchFound = false;
             for (File rawFile : rawFiles) {
                 String raw = removeFileExtension(rawFile.getName());
-                if (jpeg.equals(raw)) matchFound = true;
+                if (jpeg.equalsIgnoreCase(raw)) matchFound = true;
             }
 
             if (!matchFound) {
@@ -84,7 +84,7 @@ public class Main {
             boolean matchFound = false;
             for (File jpegFile : jpegFiles) {
                 String jpeg = removeFileExtension(jpegFile.getName());
-                if (raw.equals(jpeg)) matchFound = true;
+                if (raw.equalsIgnoreCase(jpeg)) matchFound = true;
             }
 
             if (!matchFound) {
@@ -152,7 +152,7 @@ public class Main {
                 targetFilenameNoExt = dateFormatter.format(date) + "-" + pictureNumber + " " + camera.toUpperCase();
                 boolean fileExistsWithSameFilename = false;
                 for (File file : allFiles) {
-                    if (removeFileExtension(file.getName()).equals(targetFilenameNoExt) && file != jpegFile && file != rawFile) {
+                    if (removeFileExtension(file.getName()).equalsIgnoreCase(targetFilenameNoExt) && file != jpegFile && file != rawFile) {
                         fileExistsWithSameFilename = true;
                     }
                 }
@@ -165,7 +165,7 @@ public class Main {
             else if (n > 99) continue;
             else pictureNumber = n + "";
             targetFilenameNoExt = dateFormatter.format(date) + "-" + pictureNumber + " " + camera.toUpperCase();
-            String targetFilenameJpeg = targetFilenameNoExt + ".jpg";
+            String targetFilenameJpeg = targetFilenameNoExt + ".JPG";
             String targetFilenameRaw = targetFilenameNoExt + ".ARW";
 
             if (rawFile == null) {
@@ -188,7 +188,7 @@ public class Main {
 
         for (int i = renameActions.size()-1; i >= 0; i--) {
             RenameAction action = renameActions.get(i);
-            if (action.getJpegFrom().getName().equals(action.getJpegTo().getName()))
+            if (action.getJpegFrom().getName().equalsIgnoreCase(action.getJpegTo().getName()))
                 renameActions.remove(i);
         }
 
@@ -265,7 +265,7 @@ public class Main {
         File[] directoryListing = dir.listFiles();
         if (directoryListing != null) {
             for (File file : directoryListing)
-                if (file.getName().endsWith(ext))
+                if (file.getName().toUpperCase().endsWith(ext.toUpperCase()))
                     fileList.add(file);
 
             return fileList;
