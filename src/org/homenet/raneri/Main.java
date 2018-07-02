@@ -176,6 +176,9 @@ public class Main {
                         null,
                         null
                 ));
+
+                allFiles.remove(jpegFile);
+                allFiles.add(new File(jpegdir + "\\" + targetFilenameJpeg));
             } else {
                 renameActions.add(new RenameAction(
                         jpegFile,
@@ -183,6 +186,10 @@ public class Main {
                         rawFile,
                         new File(rawdir + "\\" + targetFilenameRaw)
                 ));
+                allFiles.remove(jpegFile);
+                allFiles.add(new File(jpegdir + "\\" + targetFilenameJpeg));
+                allFiles.remove(rawFile);
+                allFiles.add(new File(rawdir + "\\" + targetFilenameRaw));
             }
 
         }
