@@ -55,7 +55,6 @@ public class Main {
             System.out.println("Found " + rawFiles.size() + " RAW images");
         } else {
             System.out.println("Didn't find any RAW images.");
-            System.exit(0);
         }
 
         Collections.sort(jpegFiles);
