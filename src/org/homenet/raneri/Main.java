@@ -132,6 +132,7 @@ public class Main {
         for (int i = 0; i < jpegFiles.size(); i++) {
             File jpegFile = jpegFiles.get(i);
             File rawFile = getRawFileByName(rawFiles, jpegFile.getName());
+            if (!exifMap.containsKey(jpegFile)) continue;
             Metadata metadata = exifMap.get(jpegFile);
 
             ExifSubIFDDirectory directory = metadata.getFirstDirectoryOfType(ExifSubIFDDirectory.class);
