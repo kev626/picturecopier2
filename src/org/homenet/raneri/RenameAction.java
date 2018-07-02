@@ -22,7 +22,11 @@ public class RenameAction {
                 if (rawFrom.renameTo(rawTo)) {
                     return true;
                 } else {
-                    jpegTo.renameTo(jpegFrom); //Roll back jpeg if raw failed
+                    if (!jpegTo.renameTo(jpegFrom)) {   //Roll back jpeg if raw failed
+                        System.out.println("Failed to rename RAW file " + rawFrom.getName() + ", and failed to roll back the corresponding JPEG file.");
+                        System.out.println("Something should be seriously wrong if you ever see this message.");
+
+                    }
                     return false;
                 }
             } else {
