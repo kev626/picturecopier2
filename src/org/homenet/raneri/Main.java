@@ -93,14 +93,18 @@ public class Main {
             }
         }
 
-        if (extraJPEGs.size() == 0 && extraRAWs.size() == 0) {
-            System.out.println("All files are in perfect JPEG/RAW pairs.");
-        } else if (extraRAWs.size() > 0) {
+        if (extraRAWs.size() > 0) {
             System.out.println("There are " + extraRAWs.size() + " extra RAWs which will not be renamed.");
             for (File raw : extraRAWs) rawFiles.remove(raw);
-        } else {
-            System.out.println("There are " + extraJPEGs.size() + " extra JPEGs and " + extraRAWs.size() + " extra RAWs.");
-            System.out.print("Would you like to rename these files as well? (Raws will not be renamed) [Y/n] ");
+        }
+
+        if (extraJPEGs.size() == 0 && extraRAWs.size() == 0) {
+            System.out.println("All files are in perfect JPEG/RAW pairs.");
+        }
+
+        if (extraJPEGs.size() > 0) {
+            System.out.println("There are " + extraJPEGs.size() + " extra JPEGs.");
+            System.out.print("Would you like to rename these files as well? [Y/n] ");
             boolean renameExtras = input.nextLine().equalsIgnoreCase("Y");
             if (!renameExtras) {
                 for (File jpeg : extraJPEGs) jpegFiles.remove(jpeg);
