@@ -8,12 +8,16 @@ public class RenameAction {
     private File jpegTo;
     private File rawFrom;
     private File rawTo;
+    private File xmpFrom;
+    private File xmpTo;
 
-    public RenameAction(File jpegFrom, File jpegTo, File rawFrom, File rawTo) {
+    public RenameAction(File jpegFrom, File jpegTo, File rawFrom, File rawTo, File xmpFrom, File xmpTo) {
         this.jpegFrom = jpegFrom;
         this.jpegTo = jpegTo;
         this.rawFrom = rawFrom;
         this.rawTo = rawTo;
+        this.xmpFrom = xmpFrom;
+        this.xmpTo = xmpTo;
     }
 
     public boolean execute() {
@@ -35,6 +39,13 @@ public class RenameAction {
         } else {
             return false;
         }
+    }
+
+    public boolean renameXMP() {
+        if (xmpFrom != null && xmpTo != null) {
+            return xmpFrom.renameTo(xmpTo);
+        }
+        return false;
     }
 
     public File getJpegFrom() {
@@ -67,5 +78,21 @@ public class RenameAction {
 
     public void setRawTo(File rawTo) {
         this.rawTo = rawTo;
+    }
+
+    public File getXmpFrom() {
+        return xmpFrom;
+    }
+
+    public void setXmpFrom(File xmpFrom) {
+        this.xmpFrom = xmpFrom;
+    }
+
+    public File getXmpTo() {
+        return xmpTo;
+    }
+
+    public void setXmpTo(File xmpTo) {
+        this.xmpTo = xmpTo;
     }
 }

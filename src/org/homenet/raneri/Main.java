@@ -57,6 +57,14 @@ public class Main {
             System.out.println("Didn't find any RAW images.");
         }
 
+        List<File> xmpFiles;
+        xmpFiles = getFilesByExtensionType(rawdir, ".XMP");
+        xmpFiles.addAll(getFilesByExtensionType(jpegdir, ".XMP"));
+        allFiles.addAll(xmpFiles);
+        if (xmpFiles.size() > 0) {
+            System.out.println("Found " + xmpFiles.size() + " XMP files");
+        }
+
         Collections.sort(jpegFiles);
         Collections.sort(rawFiles);
 
@@ -131,7 +139,8 @@ public class Main {
         SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd hh.mm.ss");
         for (int i = 0; i < jpegFiles.size(); i++) {
             File jpegFile = jpegFiles.get(i);
-            File rawFile = getRawFileByName(rawFiles, jpegFile.getName());
+            File rawFile = getFileByName(rawFiles, jpegFile.getName());
+            File xmpFile = getFileByName(xmpFiles, jpegFile.getName());
             if (!exifMap.containsKey(jpegFile)) continue;
             Metadata metadata = exifMap.get(jpegFile);
 
@@ -153,7 +162,7 @@ public class Main {
                 targetFilenameNoExt = dateFormatter.format(date) + "-" + pictureNumber + " " + camera.toUpperCase();
                 boolean fileExistsWithSameFilename = false;
                 for (File file : allFiles) {
-                    if (removeFileExtension(file.getName()).equalsIgnoreCase(targetFilenameNoExt) && file != jpegFile && file != rawFile) {
+                    if (removeFileExtension(file.getName()).equalsIgnoreCase(targetFilenameNoExt) && !file.equals(jpegFile) && !file.equals(rawFile) && !file.equals(xmpFile)) {
                         fileExistsWithSameFilename = true;
                     }
                 }
@@ -162,34 +171,50 @@ public class Main {
                 else nextRawFound = true;
             }
 
-            if (n < 10) pictureNumber = "0" + n;
-            else if (n > 99) continue;
-            else pictureNumber = n + "";
-            targetFilenameNoExt = dateFormatter.format(date) + "-" + pictureNumber + " " + camera.toUpperCase();
             String targetFilenameJpeg = targetFilenameNoExt + ".JPG";
             String targetFilenameRaw = targetFilenameNoExt + ".ARW";
+            String targetFilenameXmp = targetFilenameNoExt + ".XMP";
+
+            File xmpFrom = null;
+            File xmpTo = null;
+            if (xmpFile != null) {
+                xmpFrom = xmpFile;
+                xmpTo = new File(xmpFile.getParentFile().getPath() + "\\" + targetFilenameXmp);
+            }
 
             if (rawFile == null) {
                 renameActions.add(new RenameAction(
                         jpegFile,
                         new File(jpegdir + "\\" + targetFilenameJpeg),
                         null,
-                        null
+                        null,
+                        xmpFrom,
+                        xmpTo
                 ));
 
                 allFiles.remove(jpegFile);
                 allFiles.add(new File(jpegdir + "\\" + targetFilenameJpeg));
+                if (xmpFile != null) {
+                    allFiles.remove(xmpFrom);
+                    allFiles.add(xmpTo);
+                }
             } else {
                 renameActions.add(new RenameAction(
                         jpegFile,
                         new File(jpegdir + "\\" + targetFilenameJpeg),
                         rawFile,
-                        new File(rawdir + "\\" + targetFilenameRaw)
+                        new File(rawdir + "\\" + targetFilenameRaw),
+                        xmpFrom,
+                        xmpTo
                 ));
                 allFiles.remove(jpegFile);
                 allFiles.add(new File(jpegdir + "\\" + targetFilenameJpeg));
                 allFiles.remove(rawFile);
                 allFiles.add(new File(rawdir + "\\" + targetFilenameRaw));
+                if (xmpFile != null) {
+                    allFiles.remove(xmpFrom);
+                    allFiles.add(xmpTo);
+                }
             }
 
         }
@@ -212,7 +237,10 @@ public class Main {
         while (!isDone) {
             List<RenameAction> completedActions = new ArrayList<>();
             for (RenameAction action : renameActions) {
-                if (action.execute()) completedActions.add(action);
+                if (action.execute()) {
+                    completedActions.add(action);
+                    action.renameXMP();
+                }
             }
             for (RenameAction action : completedActions) {
                 renameActions.remove(action);
@@ -229,7 +257,7 @@ public class Main {
 
     }
 
-    public static File getRawFileByName(List<File> rawFiles, String jpegName) {
+    public static File getFileByName(List<File> rawFiles, String jpegName) {
         String name = removeFileExtension(jpegName);
         for (File f : rawFiles) {
             if (removeFileExtension(f.getName()).equalsIgnoreCase(name)) return f;
