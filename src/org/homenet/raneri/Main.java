@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.TimeZone;
 
 public class Main {
 
@@ -136,7 +137,9 @@ public class Main {
         List<RenameAction> renameActions = new ArrayList<>();
 
         DateCounter dateCounter = new DateCounter();
-        SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd hh.mm.ss");
+        SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH.mm.ss");
+        dateFormatter.setTimeZone(TimeZone.getTimeZone("GMT"));
+
         for (int i = 0; i < jpegFiles.size(); i++) {
             File jpegFile = jpegFiles.get(i);
             File rawFile = getFileByName(rawFiles, jpegFile.getName());
