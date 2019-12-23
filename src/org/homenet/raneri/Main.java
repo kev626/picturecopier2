@@ -7,40 +7,42 @@ import com.drew.metadata.exif.ExifIFD0Directory;
 import com.drew.metadata.exif.ExifSubIFDDirectory;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.TimeZone;
+import java.util.stream.Collectors;
+
+import static java.lang.String.format;
 
 public class Main {
 
     public static void main(String[] args) {
         Scanner input = new Scanner(System.in);
 
-        if (args.length != 2) {
-            System.out.println("Usage: java -jar PictureRenamer.jar <jpeg path> <raw path>");
+        if (args.length != 1) {
+            System.out.println("Usage: java -jar PictureRenamer.jar <path>");
             System.exit(1);
             return;
         }
 
         //Prompt user for paths to get/save pictures from/to
-        String jpegdir = args[0];
-        if (jpegdir.endsWith("\\")) jpegdir = jpegdir.substring(0, jpegdir.length()-1);
-
-        String rawdir = args[1];
-        if (rawdir.endsWith("\\")) rawdir = rawdir.substring(0, rawdir.length()-1);
-
+        String path = args[0];
 
         List<File> allFiles = new ArrayList<>();
 
         List<File> jpegFiles;
-        jpegFiles = getFilesByExtensionType(jpegdir, ".JPG");
+        jpegFiles = getFilesByExtensionType(path, ".JPG");
         allFiles.addAll(jpegFiles);
         if (jpegFiles.size() > 0) {
             System.out.println("Found " + jpegFiles.size() + " JPEG images");
@@ -50,7 +52,7 @@ public class Main {
         }
 
         List<File> rawFiles;
-        rawFiles = getFilesByExtensionType(rawdir, ".ARW");
+        rawFiles = getFilesByExtensionType(path, ".ARW");
         allFiles.addAll(rawFiles);
         if (rawFiles.size() > 0) {
             System.out.println("Found " + rawFiles.size() + " RAW images");
@@ -59,238 +61,139 @@ public class Main {
         }
 
         List<File> xmpFiles;
-        xmpFiles = getFilesByExtensionType(rawdir, ".XMP");
-        xmpFiles.addAll(getFilesByExtensionType(jpegdir, ".XMP"));
+        xmpFiles = getFilesByExtensionType(path, ".XMP");
         allFiles.addAll(xmpFiles);
         if (xmpFiles.size() > 0) {
             System.out.println("Found " + xmpFiles.size() + " XMP files");
         }
 
-        Collections.sort(jpegFiles);
-        Collections.sort(rawFiles);
+
 
         //Find pictures which have matches
 
-        System.out.println("Checking to make sure all pictures have matches...");
-        List<File> extraJPEGs = new ArrayList<>();
-        for (File jpegFile : jpegFiles) {
-            String jpeg = removeFileExtension(jpegFile.getName());
-            boolean matchFound = false;
-            for (File rawFile : rawFiles) {
-                String raw = removeFileExtension(rawFile.getName());
-                if (jpeg.equalsIgnoreCase(raw)) matchFound = true;
+        Map<String, FileGroup> fileGroups = new HashMap<>();
+
+        allFiles.forEach((file) -> {
+            String prefixName = removeFileExtension(file.getName());
+            if (fileGroups.containsKey(prefixName)) {
+                fileGroups.get(prefixName).getFiles().add(file);
+            } else {
+                FileGroup group = new FileGroup(prefixName);
+                group.getFiles().add(file);
+                fileGroups.put(prefixName, group);
             }
+        });
 
-            if (!matchFound) {
-                extraJPEGs.add(jpegFile);
-                //System.out.println("JPEG file " + jpeg + " does not have a corresponding RAW file!");
+        fileGroups.values().forEach((group) -> {
+            List<File> jpegs = group.getFiles().stream()
+                    .filter((file) -> file.getName().endsWith(".JPG"))
+                    .collect(Collectors.toList());
+
+            if (jpegs.size() == 0) {
+                group.ignore();
+                System.out.println(format("Group %s has no JPEG files. Ignoring", group.getPrefixName()));
+            } else {
+                jpegs.forEach((jpegFile) -> {
+                    try {
+                        Metadata meta = ImageMetadataReader.readMetadata(jpegFile);
+
+                        ExifSubIFDDirectory directory = meta.getFirstDirectoryOfType(ExifSubIFDDirectory.class);
+                        Date date = directory.getDate(ExifSubIFDDirectory.TAG_DATETIME_ORIGINAL);
+
+                        String camera = meta.getFirstDirectoryOfType(ExifIFD0Directory.class).getString(ExifIFD0Directory.TAG_MODEL);
+                        camera = camera.replace("ILCE-", "A");
+
+                        if (group.getTimestamp() != null && date != null && !group.getTimestamp().equals(date)) {
+                            System.out.println(format("Group %s has a date mismatch!", group.getPrefixName()));
+                            group.ignore();
+                            return;
+                        }
+
+                        group.setTimestamp(date);
+                        group.setCamera(camera);
+
+                    } catch (ImageProcessingException | IOException e) {
+                        System.out.println(format("Unable to read EXIF data for group %s", group.getPrefixName()));
+                    }
+                });
+
+                if (group.getTimestamp() == null) {
+                    System.out.println(format("Group %s had no date in any JPEG file."));
+                    group.ignore();
+                    return;
+                }
             }
-        }
-
-        List<File> extraRAWs = new ArrayList<>();
-        for (File rawFile : rawFiles) {
-            String raw = removeFileExtension(rawFile.getName());
-            boolean matchFound = false;
-            for (File jpegFile : jpegFiles) {
-                String jpeg = removeFileExtension(jpegFile.getName());
-                if (raw.equalsIgnoreCase(jpeg)) matchFound = true;
-            }
-
-            if (!matchFound) {
-                extraRAWs.add(rawFile);
-                //System.out.println("RAW file " + raw + " does not have a corresponding JPEG file!");
-            }
-        }
-
-        if (extraRAWs.size() > 0) {
-            System.out.println("There are " + extraRAWs.size() + " extra RAWs which will not be renamed.");
-            for (File raw : extraRAWs) rawFiles.remove(raw);
-        }
-
-        if (extraJPEGs.size() == 0 && extraRAWs.size() == 0) {
-            System.out.println("All files are in perfect JPEG/RAW pairs.");
-        }
-
-        if (extraJPEGs.size() > 0) {
-            System.out.println("There are " + extraJPEGs.size() + " extra JPEGs.");
-            System.out.print("Would you like to rename these files as well? [Y/n] ");
-            boolean renameExtras = input.nextLine().equalsIgnoreCase("Y");
-            if (!renameExtras) {
-                for (File jpeg : extraJPEGs) jpegFiles.remove(jpeg);
-            }
-        }
-
-
-
-        //Read EXIF data
-
-        System.out.println("Reading EXIF data...");
-
-        Map<File, Metadata> exifMap = getMetadata(jpegFiles);
-        System.out.println("Done reading EXIF data                                        ");
-        if (exifMap.size() == jpegFiles.size()) {
-            System.out.println("Could not get EXIF data for " + (jpegFiles.size() - exifMap.size()) + " files. These will not be renamed.");
-        }
-
-
-        //Process rename actions
-        List<RenameAction> renameActions = new ArrayList<>();
+        });
 
         DateCounter dateCounter = new DateCounter();
         SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH.mm.ss");
         dateFormatter.setTimeZone(TimeZone.getTimeZone("GMT"));
 
-        for (int i = 0; i < jpegFiles.size(); i++) {
-            File jpegFile = jpegFiles.get(i);
-            File rawFile = getFileByName(rawFiles, jpegFile.getName());
-            File xmpFile = getFileByName(xmpFiles, jpegFile.getName());
-            if (!exifMap.containsKey(jpegFile)) continue;
-            Metadata metadata = exifMap.get(jpegFile);
+        fileGroups.values().stream().filter((group) -> !group.isIgnored())
+                .forEach((group) -> {
+            int pictureNumber = dateCounter.getCountForDate(group.getTimestamp());
+            group.setFinalName(format("%s-%02d %s",
+                    dateFormatter.format(group.getTimestamp()),
+                    pictureNumber,
+                    group.getCamera().toUpperCase()));
+        });
 
-            ExifSubIFDDirectory directory = metadata.getFirstDirectoryOfType(ExifSubIFDDirectory.class);
-            Date date = directory.getDate(ExifSubIFDDirectory.TAG_DATETIME_ORIGINAL);
+        fileGroups.values().stream().filter((group) -> !group.isIgnored()).forEach((group) -> {
+            group.getFiles().forEach((file) -> {
+                String finalPath = removeFileExtension(file.getAbsolutePath());
+                String[] pieces = finalPath.split("\\\\");
+                String[] extensionSplit = file.getAbsolutePath().split("\\.");
+                pieces[pieces.length - 1] = group.getFinalName();
+                pieces[pieces.length - 1] += "." + extensionSplit[extensionSplit.length - 1];
+                finalPath = String.join("\\", pieces);
 
-            String camera = metadata.getFirstDirectoryOfType(ExifIFD0Directory.class).getString(ExifIFD0Directory.TAG_MODEL);
-            camera = camera.replace("ILCE-", "A");
+                System.out.println(finalPath);
 
-            int n = dateCounter.getCountForDate(date);
-            String pictureNumber = "";
-            String targetFilenameNoExt = "";
+                group.getFinalPaths().put(file, finalPath);
 
-            boolean nextRawFound = false;
-            while (!nextRawFound) {
-                if (n < 10) pictureNumber = "0" + n;
-                else if (n > 99) continue;
-                else pictureNumber = n + "";
-                targetFilenameNoExt = dateFormatter.format(date) + "-" + pictureNumber + " " + camera.toUpperCase();
-                boolean fileExistsWithSameFilename = false;
-                for (File file : allFiles) {
-                    if (removeFileExtension(file.getName()).equalsIgnoreCase(targetFilenameNoExt) && !file.equals(jpegFile) && !file.equals(rawFile) && !file.equals(xmpFile)) {
-                        fileExistsWithSameFilename = true;
-                    }
+                if (new File(finalPath).exists()) {
+                    System.out.println("Attempting to rename to a file that already exists");
+                    System.out.println(format("%s -> %s", file.getAbsolutePath(), finalPath));
+                    group.ignore();
                 }
+            });
+        });
 
-                if (fileExistsWithSameFilename) n = dateCounter.getCountForDate(date);
-                else nextRawFound = true;
-            }
+        int groupCount = fileGroups.size();
+        int fileCount = fileGroups.values().stream().map((group) -> group.getFinalPaths().size()).reduce(0, Integer::sum);
 
-            String targetFilenameJpeg = targetFilenameNoExt + ".JPG";
-            String targetFilenameRaw = targetFilenameNoExt + ".ARW";
-            String targetFilenameXmp = targetFilenameNoExt + ".XMP";
+        File mappingFile = new File("mapping.txt");
+        try {
+            if (!mappingFile.exists()) mappingFile.createNewFile();
+            PrintWriter writer = new PrintWriter(new FileOutputStream(mappingFile));
 
-            File xmpFrom = null;
-            File xmpTo = null;
-            if (xmpFile != null) {
-                xmpFrom = xmpFile;
-                xmpTo = new File(xmpFile.getParentFile().getPath() + "\\" + targetFilenameXmp);
-            }
-
-            if (rawFile == null) {
-                renameActions.add(new RenameAction(
-                        jpegFile,
-                        new File(jpegdir + "\\" + targetFilenameJpeg),
-                        null,
-                        null,
-                        xmpFrom,
-                        xmpTo
-                ));
-
-                allFiles.remove(jpegFile);
-                allFiles.add(new File(jpegdir + "\\" + targetFilenameJpeg));
-                if (xmpFile != null) {
-                    allFiles.remove(xmpFrom);
-                    allFiles.add(xmpTo);
-                }
-            } else {
-                renameActions.add(new RenameAction(
-                        jpegFile,
-                        new File(jpegdir + "\\" + targetFilenameJpeg),
-                        rawFile,
-                        new File(rawdir + "\\" + targetFilenameRaw),
-                        xmpFrom,
-                        xmpTo
-                ));
-                allFiles.remove(jpegFile);
-                allFiles.add(new File(jpegdir + "\\" + targetFilenameJpeg));
-                allFiles.remove(rawFile);
-                allFiles.add(new File(rawdir + "\\" + targetFilenameRaw));
-                if (xmpFile != null) {
-                    allFiles.remove(xmpFrom);
-                    allFiles.add(xmpTo);
-                }
-            }
-
+            fileGroups.values().stream()
+                    .filter((group) -> !group.isIgnored())
+                    .forEach((group) -> group.getFiles().forEach((file) -> {
+                        writer.write(format("%s -> %s%n", file.getAbsolutePath(), group.getFinalPaths().get(file)));
+                    }));
+            writer.close();
+            System.out.println(format("Mapping file written to %s", mappingFile.getAbsolutePath()));
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Failed to write mapping file");
         }
 
-        for (int i = renameActions.size()-1; i >= 0; i--) {
-            RenameAction action = renameActions.get(i);
-            if (action.getJpegFrom().getName().equalsIgnoreCase(action.getJpegTo().getName()))
-                renameActions.remove(i);
-        }
+        System.out.println(format("Will rename %d files (%d) groups",
+                fileCount, groupCount));
 
-        System.out.println("Will rename " + renameActions.size() + " image files.");
-        System.out.print("Do you wish to continue? [Y/n] ");
+        System.out.print("Would you like to continue? [Y/N] ");
         if (!input.nextLine().equalsIgnoreCase("Y")) return;
 
-        //Rename files
+        fileGroups.values().stream()
+                .filter((group) -> !group.isIgnored())
+                .forEach((group) -> group.getFiles().forEach((file) -> {
+                    file.renameTo(new File(group.getFinalPaths().get(file)));
+        }));
 
-        System.out.println("Renaming files...");
-
-        boolean isDone = false;
-        while (!isDone) {
-            List<RenameAction> completedActions = new ArrayList<>();
-            for (RenameAction action : renameActions) {
-                if (action.execute()) {
-                    completedActions.add(action);
-                    action.renameXMP();
-                }
-            }
-            for (RenameAction action : completedActions) {
-                renameActions.remove(action);
-            }
-
-            isDone = completedActions.size() == 0 || renameActions.size() == 0;
-        }
-
-        System.out.println("Done.");
-
-        //TODO: Retry if any conflicts occurred that would result in a file unable to be renamed: Old file with old name still needs to be processed, etc.
-        //TODO: Do not recalculate the entire list of events, just execute all actions again, until all have completed or none succeeded.
-        //TODO: Always do it in pairs!!!!!!!!
+        System.out.println("Finished!");
 
     }
-
-    public static File getFileByName(List<File> rawFiles, String jpegName) {
-        String name = removeFileExtension(jpegName);
-        for (File f : rawFiles) {
-            if (removeFileExtension(f.getName()).equalsIgnoreCase(name)) return f;
-        }
-        return null;
-    }
-
-    public static Map<File, Metadata> getMetadata(List<File> jpegFiles) {
-        Map<File, Metadata> exifMap = new HashMap<>();
-        long completed = 0;
-        long total = jpegFiles.size();
-        for (File file : jpegFiles) {
-            try {
-                exifMap.put(file, ImageMetadataReader.readMetadata(file));
-            } catch (IOException | ImageProcessingException e) { } finally {
-                completed++;
-                printProgressBar((double)completed / total);
-            }
-        }
-        return exifMap;
-    }
-
-    public static void printProgressBar(double progress) {
-        int length = 48;
-        System.out.print("[");
-        for (int i = 0; i < length; i++)
-            System.out.print(progress*length < i ? " " : "=");
-        System.out.print("] " + Math.round(progress * 1000)/10d + "%\r");
-    }
-
 
     public static String removeFileExtension(String file) {
         return file.substring(0, file.lastIndexOf("."));
@@ -298,20 +201,17 @@ public class Main {
 
 
     public static List<File> getFilesByExtensionType(String dirpath, String ext) {
-        List<File> fileList = new ArrayList<>();
-
-        File dir = new File(dirpath);
-        File[] directoryListing = dir.listFiles();
-        if (directoryListing != null) {
-            for (File file : directoryListing)
-                if (file.getName().toUpperCase().endsWith(ext.toUpperCase()))
-                    fileList.add(file);
-
-            return fileList;
-        } else {
-            System.err.println(dirpath + " is not a directory!");
-            System.exit(1);
+        try {
+            return Files.walk(Paths.get(dirpath))
+                    .filter(Files::isRegularFile)
+                    .filter((path) ->
+                            path.toFile().getName().toUpperCase().endsWith(ext.toUpperCase()))
+                    .map(Path::toFile)
+                    .collect(Collectors.toList());
+        } catch (IOException e) {
+            System.err.println("Error scanning directory!");
+            e.printStackTrace();
+            return new ArrayList<>(); // Return an empty list.
         }
-        return null;
     }
 }

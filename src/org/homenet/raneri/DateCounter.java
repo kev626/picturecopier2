@@ -13,7 +13,7 @@ public class DateCounter {
 
     public int getCountForDate(Date date) {
         if (dates.containsKey(date)) {
-            dates.replace(date, dates.get(date) + 1);
+            dates.put(date, dates.get(date) + 1);
             return dates.get(date);
         } else {
             dates.put(date, 0);
