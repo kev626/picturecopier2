@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class FileGroup {
+public class FileGroup implements Comparable<FileGroup> {
 
     private List<File> files;
     private Map<File, String> finalPaths;
@@ -66,5 +66,10 @@ public class FileGroup {
 
     public void setFinalName(String finalName) {
         this.finalName = finalName;
+    }
+
+    @Override
+    public int compareTo(FileGroup other) {
+        return prefixName.compareTo(other.prefixName);
     }
 }
