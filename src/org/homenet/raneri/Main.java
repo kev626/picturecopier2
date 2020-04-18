@@ -42,6 +42,8 @@ public class Main {
 
         List<File> allFiles = new ArrayList<>();
 
+        System.out.println("Scanning for files...");
+
         List<File> jpegFiles;
         jpegFiles = getFilesByExtensionType(path, ".JPG");
         allFiles.addAll(jpegFiles);
@@ -67,9 +69,8 @@ public class Main {
             System.out.println("Found " + otherFiles.size() + " other files");
         }
 
-
-
         //Find pictures which have matches
+        System.out.println("Searching for file name matches...");
 
         Map<String, FileGroup> fileGroups = new HashMap<>();
 
@@ -84,6 +85,7 @@ public class Main {
             }
         });
 
+        System.out.println("Calculating file pairings...");
         otherFiles.forEach((file) -> {
             String fileName = file.getName().substring(0, file.getName().length() - 1);
             char lastChar = file.getName().charAt(file.getName().length() - 1);
@@ -157,6 +159,7 @@ public class Main {
         SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH.mm.ss");
         dateFormatter.setTimeZone(TimeZone.getTimeZone("GMT"));
 
+        System.out.println("Calculating new file names...");
         fileGroups.values().stream().filter((group) -> !group.isIgnored())
                 .sorted()
                 .forEach((group) -> {
@@ -202,6 +205,7 @@ public class Main {
 
         Map<String, Integer> summary = new HashMap<>();
 
+        System.out.println("File names calculated. Writing mapping file.");
         File mappingFile = new File(Paths.get(path).toAbsolutePath() + "/mapping.txt");
         try {
             if (!mappingFile.exists()) mappingFile.createNewFile();
@@ -252,12 +256,20 @@ public class Main {
         System.out.print("Would you like to continue? [Y/N] ");
         if (!input.nextLine().equalsIgnoreCase("Y")) return;
 
-        fileGroups.values().stream()
-                .filter((group) -> !group.isIgnored())
-                .forEach((group) -> group.getFiles().forEach((file) -> {
-                    file.renameTo(new File(group.getFinalPaths().get(file)));
-        }));
+        System.out.println("Renaming files. Do not exit.");
 
+        List<FileGroup> finalGroupList = fileGroups.values().stream()
+                .filter((group) -> !group.isIgnored()).collect(Collectors.toList());
+
+        for (int i = 0; i < finalGroupList.size(); i++) {
+            FileGroup group = finalGroupList.get(i);
+            printProgressBar(i, finalGroupList.size(), 48);
+            group.getFiles().forEach((file) -> {
+                file.renameTo(new File(group.getFinalPaths().get(file)));
+            });
+        }
+
+        System.out.print("                                                            \r");
         System.out.println("Finished!");
 
     }
