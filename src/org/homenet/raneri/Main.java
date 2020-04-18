@@ -42,7 +42,7 @@ public class Main {
 
         List<File> allFiles = new ArrayList<>();
 
-        System.out.println("Scanning for files...");
+        System.out.println("Scanning for files in " + path);
 
         List<File> jpegFiles;
         jpegFiles = getFilesByExtensionType(path, ".JPG");
@@ -281,11 +281,16 @@ public class Main {
 
     public static List<File> getFilesByExtensionType(String dirpath, String ext) {
         try {
+            AtomicInteger i = new AtomicInteger(0);
             return Files.walk(Paths.get(dirpath))
                     .filter(Files::isRegularFile)
                     .filter((path) ->
                             path.toFile().getName().toUpperCase().endsWith(ext.toUpperCase()))
                     .map(Path::toFile)
+                    .filter(path -> {
+                        System.out.println("Found " + i.incrementAndGet() + " files");
+                        return true;
+                    })
                     .collect(Collectors.toList());
         } catch (IOException e) {
             System.err.println("Error scanning directory!");
