@@ -288,7 +288,7 @@ public class Main {
                             path.toFile().getName().toUpperCase().endsWith(ext.toUpperCase()))
                     .map(Path::toFile)
                     .filter(path -> {
-                        System.out.println("Found " + i.incrementAndGet() + " files");
+                        System.out.print("Found " + i.incrementAndGet() + " files\r");
                         return true;
                     })
                     .collect(Collectors.toList());
