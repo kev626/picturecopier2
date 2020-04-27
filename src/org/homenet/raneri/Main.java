@@ -125,11 +125,20 @@ public class Main {
                         ExifSubIFDDirectory directory = meta.getFirstDirectoryOfType(ExifSubIFDDirectory.class);
                         Date date = directory.getDate(ExifSubIFDDirectory.TAG_DATETIME_ORIGINAL);
 
+                        if (date == null) {
+                            System.out.println(format("Group %s has no date!", group.getPrefixName()));
+                            group.ignore();
+                            return;
+                        }
+
                         String camera = meta.getFirstDirectoryOfType(ExifIFD0Directory.class).getString(ExifIFD0Directory.TAG_MODEL);
+
+                        if (camera == null) camera = "";
+
                         camera = camera.replace("ILCE-", "A");
                         camera = camera.trim();
 
-                        if (group.getTimestamp() != null && date != null && !group.getTimestamp().equals(date)) {
+                        if (group.getTimestamp() != null && !group.getTimestamp().equals(date)) {
                             System.out.print("                                                            \r");
                             System.out.println(format("Group %s has a date mismatch!", group.getPrefixName()));
                             group.ignore();
@@ -164,10 +173,16 @@ public class Main {
                 .sorted()
                 .forEach((group) -> {
             int pictureNumber = dateCounter.getCountForDate(group.getTimestamp());
-            group.setFinalName(format("%s-%02d %s",
-                    dateFormatter.format(group.getTimestamp()),
-                    pictureNumber,
-                    group.getCamera().toUpperCase()));
+            if (group.getCamera().isEmpty()) {
+                group.setFinalName(format("%s-%02d",
+                        dateFormatter.format(group.getTimestamp()),
+                        pictureNumber));
+            } else {
+                group.setFinalName(format("%s-%02d %s",
+                        dateFormatter.format(group.getTimestamp()),
+                        pictureNumber,
+                        group.getCamera().toUpperCase()));
+            }
         });
 
         fileGroups.values().stream().filter((group) -> !group.isIgnored()).forEach((group) -> {
