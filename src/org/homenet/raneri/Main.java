@@ -163,7 +163,7 @@ public class Main {
 
                 if (group.getTimestamp() == null) {
                     System.out.print("                                                            \r");
-                    System.out.println(format("Group %s had no date in any JPEG file."));
+                    System.out.println(format("Group %s had no date in any JPEG file.", group.getPrefixName()));
                     group.ignore();
                     return;
                 }
