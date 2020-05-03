@@ -123,6 +123,13 @@ public class Main {
                         Metadata meta = ImageMetadataReader.readMetadata(jpegFile);
 
                         ExifSubIFDDirectory directory = meta.getFirstDirectoryOfType(ExifSubIFDDirectory.class);
+
+                        if (directory == null) {
+                            System.out.println(format("Group %s has no exif data!", group.getPrefixName()));
+                            group.ignore();
+                            return;
+                        }
+
                         Date date = directory.getDate(ExifSubIFDDirectory.TAG_DATETIME_ORIGINAL);
 
                         if (date == null) {
