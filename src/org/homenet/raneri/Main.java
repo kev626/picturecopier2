@@ -5,12 +5,6 @@ import com.drew.imaging.ImageProcessingException;
 import com.drew.metadata.Metadata;
 import com.drew.metadata.exif.ExifIFD0Directory;
 import com.drew.metadata.exif.ExifSubIFDDirectory;
-import com.drew.metadata.exif.makernotes.SonyType1MakernoteDirectory;
-import org.homenet.raneri.comparator.ForwardComparator;
-import org.homenet.raneri.comparator.ReverseComparator;
-import org.homenet.raneri.name.DateNameGenerator;
-import org.homenet.raneri.name.NameGenerator;
-import org.homenet.raneri.name.NumericNameGenerator;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -21,7 +15,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -38,19 +31,14 @@ public class Main {
     public static void main(String[] args) {
         Scanner input = new Scanner(System.in);
 
-        if (args.length == 0) {
-            System.out.println("Usage: java -jar PictureRenamer.jar (--reverse) <path>");
+        if (args.length != 1) {
+            System.out.println("Usage: java -jar PictureRenamer.jar <path>");
             System.exit(1);
             return;
         }
 
         //Prompt user for paths to get/save pictures from/to
-        int pathArgIndex = args.length == 1 ? 0 : 1;
-        String path = args[pathArgIndex];
-        boolean reverseMode = false;
-        if (pathArgIndex == 1) {
-            reverseMode = args[0].trim().equalsIgnoreCase("--reverse");
-        }
+        String path = args[0];
 
         List<File> allFiles = new ArrayList<>();
 
@@ -164,13 +152,8 @@ public class Main {
                             return;
                         }
 
-                        byte[] data = meta.getFirstDirectoryOfType(SonyType1MakernoteDirectory.class).getByteArray(0x9400);
-                        int seq = ((int)data[13] << 24) | ((int)data[12] << 16) | ((int)data[11] << 8) | ((int)data[10]);
                         group.setTimestamp(date);
-                        group.setSequenceNumber(seq);
                         group.setCamera(camera);
-
-                        System.out.println(group.toString());
 
                     } catch (ImageProcessingException | IOException e) {
                         System.out.print("                                                            \r");
@@ -188,33 +171,26 @@ public class Main {
         });
         System.out.print("                                                            \r");
 
-
-        NameGenerator generator;
-        if (reverseMode) {
-            generator = new NumericNameGenerator();
-        } else {
-            DateCounter dateCounter = new DateCounter();
-            SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH.mm.ss");
-            dateFormatter.setTimeZone(TimeZone.getTimeZone("GMT"));
-            generator = new DateNameGenerator(dateCounter, dateFormatter);
-        }
+        DateCounter dateCounter = new DateCounter();
+        SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH.mm.ss");
+        dateFormatter.setTimeZone(TimeZone.getTimeZone("GMT"));
 
         System.out.println("Calculating new file names...");
-
-        Comparator<FileGroup> comparator;
-        if (reverseMode) {
-            comparator = new ReverseComparator();
-        } else {
-            comparator = new ForwardComparator();
-        }
-        List<FileGroup> sortedGroupList = fileGroups.values().stream().filter((group) -> !group.isIgnored())
-                .sorted(comparator)
-                .collect(Collectors.toList());
-
-        for (int i = 0; i < sortedGroupList.size(); i++) {
-            FileGroup group = sortedGroupList.get(i);
-            group.setFinalName(generator.generateFileName(i, group));
-        }
+        fileGroups.values().stream().filter((group) -> !group.isIgnored())
+                .sorted()
+                .forEach((group) -> {
+            int pictureNumber = dateCounter.getCountForDate(group.getTimestamp());
+            if (group.getCamera().isEmpty()) {
+                group.setFinalName(format("%s-%02d",
+                        dateFormatter.format(group.getTimestamp()),
+                        pictureNumber));
+            } else {
+                group.setFinalName(format("%s-%02d %s",
+                        dateFormatter.format(group.getTimestamp()),
+                        pictureNumber,
+                        group.getCamera().toUpperCase()));
+            }
+        });
 
         fileGroups.values().stream().filter((group) -> !group.isIgnored()).forEach((group) -> {
             group.getFiles().forEach((file) -> {
