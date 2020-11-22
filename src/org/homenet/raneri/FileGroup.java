@@ -6,8 +6,9 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
-public class FileGroup implements Comparable<FileGroup> {
+public class FileGroup {
 
     private List<File> files;
     private Map<File, String> finalPaths;
@@ -15,6 +16,7 @@ public class FileGroup implements Comparable<FileGroup> {
     private String prefixName;
     private boolean ignored = false;
     private Date timestamp;
+    private long sequenceNumber;
     private String camera;
     private String finalName;
 
@@ -56,6 +58,14 @@ public class FileGroup implements Comparable<FileGroup> {
         this.camera = camera;
     }
 
+    public long getSequenceNumber() {
+        return sequenceNumber;
+    }
+
+    public void setSequenceNumber(long sequenceNumber) {
+        this.sequenceNumber = sequenceNumber;
+    }
+
     public String getFinalName() {
         return finalName;
     }
@@ -69,7 +79,11 @@ public class FileGroup implements Comparable<FileGroup> {
     }
 
     @Override
-    public int compareTo(FileGroup other) {
-        return prefixName.compareTo(other.prefixName);
+    public String toString() {
+        return String.format("%s - Date=%s, seq=%d, cam=%s",
+                files.stream().map(f -> f.getAbsolutePath()).collect(Collectors.joining(",")),
+                timestamp.toString(),
+                sequenceNumber,
+                camera);
     }
 }
